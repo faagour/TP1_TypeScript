@@ -11,12 +11,10 @@ let staticLists: ITodoList[] = [
   }
 ];
 
-// 1. Récupérer la liste de toutes les listes
 export const listLists = async (request: FastifyRequest, reply: FastifyReply) => {
   reply.send({ data: staticLists });
 };
 
-// 2. Ajouter une nouvelle liste
 export const addList = async (request: FastifyRequest, reply: FastifyReply) => {
   const { id, name, description } = request.body as Omit<ITodoList, 'items'>;
   const newList: ITodoList = {
@@ -30,7 +28,6 @@ export const addList = async (request: FastifyRequest, reply: FastifyReply) => {
   reply.code(201).send({ data: newList });
 };
 
-// 4. Ajouter un item à une liste
 export const addItemToList = async (request: FastifyRequest, reply: FastifyReply) => {
   const { id } = request.params as { id: string };
   const { description, status } = request.body as ITodoItem;
@@ -42,7 +39,7 @@ export const addItemToList = async (request: FastifyRequest, reply: FastifyReply
   }
 
   const newItem: ITodoItem = {
-    id: `i-${Date.now()}`,  // Unique ID for each item
+    id: `i-${Date.now()}`,  
     description,
     status
   };
@@ -51,7 +48,6 @@ export const addItemToList = async (request: FastifyRequest, reply: FastifyReply
   reply.code(201).send({ data: newItem });
 };
 
-// 5. Supprimer un item d'une liste
 export const removeItemFromList = async (request: FastifyRequest, reply: FastifyReply) => {
   const { listId, itemId } = request.params as { listId: string, itemId: string };
 
@@ -71,7 +67,6 @@ export const removeItemFromList = async (request: FastifyRequest, reply: Fastify
   reply.send({ message: 'Item removed' });
 };
 
-// 6. Mettre à jour un item d'une liste
 export const updateItemInList = async (request: FastifyRequest, reply: FastifyReply) => {
   const { listId, itemId } = request.params as { listId: string, itemId: string };
   const { description, status } = request.body as Partial<ITodoItem>;
