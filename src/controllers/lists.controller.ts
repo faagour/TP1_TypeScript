@@ -1,70 +1,109 @@
-// controllers/lists.controller.ts
 import { FastifyReply, FastifyRequest } from "fastify";
 import { ITodoList, ITodoItem } from "../interfaces";
 
-let staticLists: ITodoList[] = [
-  {
-    id: 'l-1',
-    name: 'Dev tasks',
-    description: 'Tasks related to development',
-    items: []
-  }
-];
-
+// afficher toutes les listes
 export async function listLists(
   request: FastifyRequest, 
   reply: FastifyReply
 ) {
-  console.log('DB status', this.level.db.status)
-  const listsIter = this.level.db.iterator()
-
-  const result: ITodoList[] = []
-  for await (const [key, value] of listsIter) {
-    result.push(JSON.parse(value))
+  if (this.level.db.status !== 'open') {
+    reply.code(500).send({ error: 'Database is not connected' });
+    return;
   }
-  reply.send({ data: result })
+
+  const listsIter = this.level.db.iterator();
+  const result: ITodoList[] = [];
+  for await (const [key, value] of listsIter) {
+    result.push(JSON.parse(value));
+  }
+  reply.send({ data: result });
 }
 
-
+// ajouter une nouvelle liste
 export async function addList(
   request: FastifyRequest, 
   reply: FastifyReply
 ) {
- const list = request.body as ITodoList
- const result = await this.level.leveldb.put(
+ const list = request.body as ITodoList;
+ const result = await this.level.db.put(
    list.id.toString(), JSON.stringify(list)
- )
- reply.send({ data: result })
+ );
+ reply.send({ data: result });
 }
 
-export const addItemToList = async (request: FastifyRequest, reply: FastifyReply) => {
+// mise à jour
+export async function updateList(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
   const { id } = request.params as { id: string };
-  const { description, status } = request.body as ITodoItem;
+  const { name, description } = request.body as Partial<ITodoList>;
 
-  const list = staticLists.find(list => list.id === id);
-  if (!list) {
+  const existingList = await this.level.db.get(id).catch(() => null);
+  if (!existingList) {
     reply.code(404).send({ error: 'List not found' });
     return;
   }
 
+  const list = JSON.parse(existingList);
+  list.name = name ?? list.name;
+  list.description = description ?? list.description;
+
+  await this.level.db.put(id, JSON.stringify(list));
+  reply.send({ data: list });
+}
+
+// ajouter un item à une liste
+export async function addItemToList(request: FastifyRequest, reply: FastifyReply) {
+  const { id } = request.params as { id: string };
+  const { description, status } = request.body as ITodoItem;
+
+  if (!this.level?.db) {
+    reply.code(500).send({ error: 'Database is not connected' });
+    return;
+  }
+
+  const listData = await this.level.db.get(id).catch(() => null);
+  if (!listData) {
+    reply.code(404).send({ error: 'List not found' });
+    return;
+  }
+
+  const list = JSON.parse(listData) as ITodoList;
+
+  if (!Array.isArray(list.items)) {
+    list.items = [];
+  }
+
   const newItem: ITodoItem = {
-    id: `i-${Date.now()}`,  
+    id: `i-${Date.now()}`,
     description,
     status
   };
 
   list.items.push(newItem);
-  reply.code(201).send({ data: newItem });
-};
 
-export const removeItemFromList = async (request: FastifyRequest, reply: FastifyReply) => {
+  await this.level.db.put(id, JSON.stringify(list));
+  reply.code(201).send({ data: newItem });
+}
+
+
+// supprimer un item d'une liste
+export async function removeItemFromList(request: FastifyRequest, reply: FastifyReply) {
   const { listId, itemId } = request.params as { listId: string, itemId: string };
 
-  const list = staticLists.find(list => list.id === listId);
-  if (!list) {
+  if (!this.level?.db) {
+    reply.code(500).send({ error: 'Database is not connected' });
+    return;
+  }
+
+  const listData = await this.level.db.get(listId).catch(() => null);
+  if (!listData) {
     reply.code(404).send({ error: 'List not found' });
     return;
   }
+
+  const list = JSON.parse(listData) as ITodoList;
 
   const itemIndex = list.items.findIndex(item => item.id === itemId);
   if (itemIndex === -1) {
@@ -73,18 +112,28 @@ export const removeItemFromList = async (request: FastifyRequest, reply: Fastify
   }
 
   list.items.splice(itemIndex, 1);
-  reply.send({ message: 'Item removed' });
-};
 
-export const updateItemInList = async (request: FastifyRequest, reply: FastifyReply) => {
+  await this.level.db.put(listId, JSON.stringify(list));
+  reply.send({ message: 'Item removed' });
+}
+
+// mettre à jour un item dans une liste
+export async function updateItemInList(request: FastifyRequest, reply: FastifyReply) {
   const { listId, itemId } = request.params as { listId: string, itemId: string };
   const { description, status } = request.body as Partial<ITodoItem>;
 
-  const list = staticLists.find(list => list.id === listId);
-  if (!list) {
+  if (!this.level?.db) {
+    reply.code(500).send({ error: 'Database is not connected' });
+    return;
+  }
+
+  const listData = await this.level.db.get(listId).catch(() => null);
+  if (!listData) {
     reply.code(404).send({ error: 'List not found' });
     return;
   }
+
+  const list = JSON.parse(listData) as ITodoList;
 
   const item = list.items.find(item => item.id === itemId);
   if (!item) {
@@ -95,5 +144,6 @@ export const updateItemInList = async (request: FastifyRequest, reply: FastifyRe
   item.description = description ?? item.description;
   item.status = status ?? item.status;
 
+  await this.level.db.put(listId, JSON.stringify(list));
   reply.send({ data: item });
-};
+}
