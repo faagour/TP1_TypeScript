@@ -11,22 +11,31 @@ let staticLists: ITodoList[] = [
   }
 ];
 
-export const listLists = async (request: FastifyRequest, reply: FastifyReply) => {
-  reply.send({ data: staticLists });
-};
+export async function listLists(
+  request: FastifyRequest, 
+  reply: FastifyReply
+) {
+  console.log('DB status', this.level.db.status)
+  const listsIter = this.level.db.iterator()
 
-export const addList = async (request: FastifyRequest, reply: FastifyReply) => {
-  const { id, name, description } = request.body as Omit<ITodoList, 'items'>;
-  const newList: ITodoList = {
-    id,
-    name,
-    description,
-    items: []
-  };
+  const result: ITodoList[] = []
+  for await (const [key, value] of listsIter) {
+    result.push(JSON.parse(value))
+  }
+  reply.send({ data: result })
+}
 
-  staticLists.push(newList);
-  reply.code(201).send({ data: newList });
-};
+
+export async function addList(
+  request: FastifyRequest, 
+  reply: FastifyReply
+) {
+ const list = request.body as ITodoList
+ const result = await this.level.leveldb.put(
+   list.id.toString(), JSON.stringify(list)
+ )
+ reply.send({ data: result })
+}
 
 export const addItemToList = async (request: FastifyRequest, reply: FastifyReply) => {
   const { id } = request.params as { id: string };
