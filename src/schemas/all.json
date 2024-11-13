@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "ITodoList": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "ITodoItem#"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "ITodoItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "PENDING",
+            "IN-PROGRESS",
+            "DONE"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "description",
+        "status"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
