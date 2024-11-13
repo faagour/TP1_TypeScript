@@ -1,8 +1,10 @@
-FROM node:19
-# Create app directory in container
+FROM node:23.1
 WORKDIR /app
 COPY . .
+
 RUN npm install
-RUN npm run build
-CMD [“node”,”dist/index.js”]
-EXPOSE 8080
+
+RUN ls -la /app
+
+CMD ["npm", "run", "dev"]
+EXPOSE 3000
